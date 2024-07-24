@@ -1,124 +1,177 @@
-import tkinter as tk
-from tkinter import ttk, NORMAL, DISABLED
-import tkinter.font as font
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QPushButton, QTextEdit, QLCDNumber
+from PyQt5.QtGui import QFont, QPalette, QColor
+from PyQt5.QtCore import Qt, QLocale, QTimer
 
-
-class CalcFrame(ttk.Frame):
-
-    def __init__(self, gui_container):
-        super().__init__(gui_container)
-
-        self.gui_container = gui_container
+class CalcFrame(QWidget):
+    def __init__(self):
+        super().__init__()
 
         self.cpu = Cpu()
-
-        # TODO: Calcular row y col con font_size del parent.
         self._rollertape_max_col = 25
         self._rollertape_max_row = 12
 
-        for i in range(0, self._rollertape_max_row + 4):
-            self.gui_container.rowconfigure(i, weight=1)
+        self._rollertape_font_size = 15
+        self._rollertape_font = QFont("Roboto Mono", self._rollertape_font_size)
+        self._key_font = QFont("Roboto Mono", 20)
 
-        for i in range(0, 6):
-            self.gui_container.columnconfigure(i, weight=1)
+        self.initUI()
 
-        # add padding to the frame and show it
-        #self.gui_container.grid(padx=10, pady=10, sticky=tk.NSEW)
+    def initUI(self):
+        vbox = QVBoxLayout()
+        self.setLayout(vbox)
+
+        self.gui_rollertape = QTextEdit()
+        self.gui_rollertape.setFont(self._rollertape_font)
+        self.gui_rollertape.setReadOnly(True)
+        vbox.addWidget(self.gui_rollertape)
+
+        self.lcd_display = QLCDNumber()
+        self.lcd_display.setDigitCount(10)
+        self.lcd_display.setSegmentStyle(QLCDNumber.Flat)
+        self.lcd_display.setPalette(self.createPalette())
+        self.lcd_display.setStyleSheet("background: rgb(255, 228, 181); color: black; border: 1px solid black;")
+        self.lcd_display.setMode(QLCDNumber.Dec)
+        self.lcd_display.setSmallDecimalPoint(True)
+        vbox.addWidget(self.lcd_display)
 
         self.buttons = []
-        self.columns = 4
+        grid = QGridLayout()
+        vbox.addLayout(grid)
 
-        self._reset_rollertape()
+        self.gui_buttons = []
 
-        self._rollertape_font_size = 15
+        # Create number buttons
+        for i in range(10):
+            button = QPushButton(str(i))
+            button.setFont(self._key_font)
+            button.clicked.connect(lambda _, x=i: self.enter_argument(str(x)))
+            self.gui_buttons.append(button)
 
-        self._rollertape_font = font.Font(family="Roboto Mono",
-                                          size=self._rollertape_font_size
-                                          )
+        # Create decimal button
+        decimal_separator = QLocale.system().decimalPoint()
+        button = QPushButton(decimal_separator)
+        button.setFont(self._key_font)
+        button.clicked.connect(lambda: self.enter_argument(decimal_separator))
+        self.gui_buttons.append(button)
 
-        self._key_font = font.Font(family="Roboto Mono",
-                                   size=20
-                                   )
+        # Create clear button
+        button = QPushButton("C")
+        button.setFont(self._key_font)
+        button.clicked.connect(self.clear)
+        self.gui_buttons.append(button)
 
-        self.gui_rollertape = tk.Text(self.gui_container,
-                                      width=self._rollertape_max_col,
-                                      height=self._rollertape_max_row,
-                                      background="white",
-                                      font=self._rollertape_font
-                                      )
+        # Position number buttons in the grid
+        positions = [(4, 1), (3, 1), (3, 2), (3, 3), (2, 1), (2, 2), (2, 3), (1, 1), (1, 2), (1, 3), (4, 2), (4, 4)]
+        for i, (row, col) in enumerate(positions):
+            grid.addWidget(self.gui_buttons[i], row, col)
 
-        # Init calc.
-        self.create_widgets()
+        # Create operation buttons
+        operations = [('+', self.add), ('-', self.sub), ('*', self.mul), ('/', self.div), ('=', self.evaluate)]
+        self.op_buttons = []
+        for i, (text, command) in enumerate(operations):
+            button = QPushButton(text)
+            button.setFont(self._key_font)
+            button.clicked.connect(command)
+            grid.addWidget(button, i + 1, 4)
+            self.op_buttons.append(button)
+
         self.update_rollertape("Ready.")
         self.update_rollertape("0.")
-        self.gui_container.focus_set()
 
-    def create_widgets(self):
-        padx, pady = 5, 5
-        num_buttons = 11
+    def createPalette(self):
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(255, 228, 181))  # Ocre claro
+        palette.setColor(QPalette.WindowText, Qt.black)  # Texto negro
+        return palette
 
-        self.gui_rollertape.grid(rowspan=4, row=1, column=4)
+    def enter_argument(self, x):
+        # Handle decimal point
+        if x == QLocale.system().decimalPoint():
+            if QLocale.system().decimalPoint() not in self.cpu.get_tempinput():
+                self.cpu.buffer_append(x)
+        else:
+            self.cpu.buffer_append(x)
 
-        self.gui_container.gui_buttons = [tk.Button(self)] * num_buttons
+        self.lcd_display.display(self.format_display(self.cpu.get_tempinput()))
 
-        # Keyboard events
-        for i in range(0, num_buttons):
-            self.gui_container.bind(str(i), lambda event: self.enter_argument(i))
-            self.gui_container.gui_buttons[i] = tk.Button(self.gui_container,
-                                                          text=str(i),
-                                                          width=5,
-                                                          height=5,
-                                                          font=self._key_font,
-                                                          command=f"self.enter_argument({i})")
-
-        self.gui_container.gui_buttons[10] = tk.Button(self.gui_container,
-                                                      text=".",
-                                                      width=5,
-                                                      height=5,
-                                                      font=self._key_font,
-                                                      command=f"self.enter_argument({i})")
-
-
-        # Position the buttons in the grid.
-        self.gui_container.gui_buttons[0].grid(column=1, row=4, padx=padx, pady=pady)
-
-        self.gui_container.gui_buttons[1].grid(column=1, row=3, padx=padx, pady=pady)
-        self.gui_container.gui_buttons[2].grid(column=2, row=3, padx=padx, pady=pady)
-        self.gui_container.gui_buttons[3].grid(column=3, row=3, padx=padx, pady=pady)
-
-        self.gui_container.gui_buttons[4].grid(column=1, row=2, padx=padx, pady=pady)
-        self.gui_container.gui_buttons[5].grid(column=2, row=2, padx=padx, pady=pady)
-        self.gui_container.gui_buttons[6].grid(column=3, row=2, padx=padx, pady=pady)
-
-        self.gui_container.gui_buttons[7].grid(column=1, row=1, padx=padx, pady=pady)
-        self.gui_container.gui_buttons[8].grid(column=2, row=1, padx=padx, pady=pady)
-        self.gui_container.gui_buttons[9].grid(column=3, row=1, padx=padx, pady=pady)
-
-        self.gui_container.gui_buttons[10].grid(column=2, row=4, padx=padx, pady=pady)
-
-
-        self.gui_container.bind("q", lambda event: self.gui_container.destroy())
-        self.gui_container.bind("Q", lambda event: self.gui_container.destroy())
-
-    def enter_argument(self, x: int):
-        self.gui_container.gui_buttons[x].configure(background="red")
-        self.cpu.buffer_append(x)
-        self.gui_container.gui_buttons[x].configure(background="white")
+    def format_display(self, value):
+        try:
+            # Ensure the number is a float and format it with 2 decimal places
+            number = float(value.replace(QLocale.system().decimalPoint(), '.'))
+            formatted_value = f"{number:.2f}"
+            # Replace the decimal point with the system locale's decimal point
+            return formatted_value.replace('.', QLocale.system().decimalPoint())
+        except ValueError:
+            return "0"
 
     def update_rollertape(self, txt: str):
-        self.rollertape_buffer = self.rollertape_buffer[1:]  # Scroll
-        self.rollertape_buffer.append(txt)
+        # Clean the previous content and add the new content
+        self.gui_rollertape.append(txt)
 
-        line = ''.join(x.rjust(self._rollertape_max_col + 2, " ") +
-                       "\n" for x in self.rollertape_buffer)
+    def clear(self):
+        self.cpu.reset()
+        self.lcd_display.display("0")
+        self.update_rollertape("0.")
 
-        self.gui_rollertape.config(state=NORMAL)
-        self.gui_rollertape.insert('1.0', line)
-        self.gui_rollertape.config(state=DISABLED)
+    def add(self):
+        self.cpu.add()
+        self.update_rollertape(self.cpu.get_operation()[-2] + self.cpu.get_operation()[-1])
+        self.lcd_display.display("0")
 
-    def _reset_rollertape(self):
-        self.rollertape_buffer = [""] * self._rollertape_max_row
+    def sub(self):
+        self.cpu.sub()
+        self.update_rollertape(self.cpu.get_operation()[-2] + self.cpu.get_operation()[-1])
+        self.lcd_display.display("0")
 
+    def mul(self):
+        self.cpu.mul()
+        self.update_rollertape(self.cpu.get_operation()[-2] + self.cpu.get_operation()[-1])
+        self.lcd_display.display("0")
+
+    def div(self):
+        self.cpu.div()
+        self.update_rollertape(self.cpu.get_operation()[-2] + self.cpu.get_operation()[-1])
+        self.lcd_display.display("0")
+
+    def evaluate(self):
+        result = self.cpu.evaluate()
+        self.lcd_display.display(result)
+        self.update_rollertape("=" + result)
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if Qt.Key_0 <= key <= Qt.Key_9:
+            self.enter_argument(str(key - Qt.Key_0))
+            self.highlight_button(self.gui_buttons[key - Qt.Key_0])
+        elif key == Qt.Key_Plus:
+            self.add()
+            self.highlight_button(self.op_buttons[0])
+        elif key == Qt.Key_Minus:
+            self.sub()
+            self.highlight_button(self.op_buttons[1])
+        elif key == Qt.Key_Asterisk:
+            self.mul()
+            self.highlight_button(self.op_buttons[2])
+        elif key == Qt.Key_Slash:
+            self.div()
+            self.highlight_button(self.op_buttons[3])
+        elif key == Qt.Key_Enter or key == Qt.Key_Return:
+            self.evaluate()
+            self.highlight_button(self.op_buttons[4])
+        elif key == Qt.Key_C:
+            self.clear()
+            self.highlight_button(self.gui_buttons[11])
+        elif key == Qt.Key_Backspace:
+            self.cpu.buffer_remove()
+            self.lcd_display.display(self.format_display(self.cpu.get_tempinput()))
+        elif key == Qt.Key_Period:
+            self.enter_argument(QLocale.system().decimalPoint())
+            self.highlight_button(self.gui_buttons[10])
+
+    def highlight_button(self, button):
+        button.setStyleSheet("background-color: lightblue")
+        QTimer.singleShot(150, lambda: button.setStyleSheet(""))
 
 class Cpu:
 
@@ -127,42 +180,64 @@ class Cpu:
         self._operation = []
         self._total = 0
 
-
-    def buffer_append(self, x: int):
+    def buffer_append(self, x):
+        if x == QLocale.system().decimalPoint() and QLocale.system().decimalPoint() in self._tempinput:
+            return
         self._tempinput += str(x)
 
     def buffer_remove(self):
         if len(self._tempinput) > 1:
             self._tempinput = self._tempinput[:-1]
-        elif self._tempinput != "0":
-            self._tempinput = 0
+        else:
+            self._tempinput = "0"
 
     def add(self):
         self._operation.append(self._tempinput)
         self._operation.append("+")
 
-
     def sub(self):
-        pass
+        self._operation.append(self._tempinput)
+        self._operation.append("-")
 
     def div(self):
-        pass
+        self._operation.append(self._tempinput)
+        self._operation.append("/")
 
     def mul(self):
-        pass
+        self._operation.append(self._tempinput)
+        self._operation.append("*")
 
+    def reset(self):
+        self._tempinput = ""
+        self._operation = []
 
-class App(tk.Tk):
-    def __init__(self):
-        super().__init__()
+    def get_tempinput(self):
+        return self._tempinput
 
-        # self.resizable(width=False, height=False)
-        self.configure(background="grey")
-        self.geometry('400x250')
-        self.title("Calculadora")
+    def get_operation(self):
+        return self._operation
 
+    def evaluate(self):
+        self._operation.append(self._tempinput)
+        expression = "".join(self._operation)
+        try:
+            self._total = eval(expression)
+            result = "{:.2f}".format(self._total)
+            self._operation = [result]
+            self._tempinput = ""
+            return result
+        except Exception as e:
+            self.reset()
+            return "Error"
+
+class App(QApplication):
+    def __init__(self, argv):
+        super().__init__(argv)
+        self.window = CalcFrame()
+        self.window.setWindowTitle("Calculadora")
+        self.window.resize(400, 400)
+        self.window.show()
 
 if __name__ == "__main__":
-    app = App()
-    CalcFrame(app)
-    app.mainloop()
+    app = App(sys.argv)
+    sys.exit(app.exec_())
