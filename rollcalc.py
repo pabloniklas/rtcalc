@@ -1,6 +1,8 @@
 import sys
+
+from PyQt5 import QtCore
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QPushButton, QTextEdit, QHBoxLayout, QSizePolicy, QStatusBar, QMenuBar, QAction, QMessageBox
-from PyQt5.QtGui import QFont, QPalette, QColor, QTextCursor, QIcon
+from PyQt5.QtGui import QFont, QPalette, QColor, QTextCursor, QIcon, QFontDatabase
 from PyQt5.QtCore import Qt, QLocale
 
 import locale
@@ -14,9 +16,8 @@ class CalcFrame(QWidget):
         self.cpu = Cpu()
         self._rollertape_max_col = 25
         self._rollertape_max_row = 12
-
-        self._rollertape_font_size = 15
-        self._rollertape_font = QFont("Courier", self._rollertape_font_size)
+        self._lcd_display_font_size = 15
+        self._rollertape_font_size = 13
         self._key_font = QFont("Roboto Condensed", 15)
 
         self.initUI()
@@ -24,6 +25,19 @@ class CalcFrame(QWidget):
     def initUI(self):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
+
+        # Load the custom font
+        font_id = QFontDatabase.addApplicationFont("font/wopr-tweaked.ttf")
+        if font_id == -1:
+            print("Error: Fuente wopr-tweaked.ttf no se pudo cargar.")
+            self._rollertape_font = QFont("Roboto Console", self._rollertape_font_size)  # Fallback font
+        else:
+            font_family = QFontDatabase.applicationFontFamilies(font_id)
+            if font_family:
+                self._rollertape_font = QFont(font_family[0], self._rollertape_font_size)
+            else:
+                print("Error: No se encontraron familias de fuentes para wopr-tweaked.ttf.")
+                self._rollertape_font = QFont("Roboto Console", self._rollertape_font_size)  # Fallback font
 
         # Create menu bar
         menu_bar = QMenuBar(self)
@@ -59,11 +73,11 @@ class CalcFrame(QWidget):
 
         # Reemplazar el panel LCD por un panel de texto de solo lectura
         self.lcd_display = QTextEdit()
-        self.lcd_display.setFont(self._rollertape_font)
+        self.lcd_display.setFont(QFont("Roboto Console", self._lcd_display_font_size))
         self.lcd_display.setReadOnly(True)
-        self.lcd_display.setAlignment(Qt.AlignRight)  # Justificación a la derecha
         self.lcd_display.setFixedHeight(40)
         self.lcd_display.setStyleSheet("background: rgb(255, 228, 181); color: black; border: 1px solid black;")
+        self.lcd_display.setAlignment(Qt.AlignRight)  # Justificación a la derecha
         left_layout.addWidget(self.lcd_display)
 
         self.buttons = []
@@ -88,7 +102,9 @@ class CalcFrame(QWidget):
 
             if text == "Back":
                 button.setStyleSheet("background-color: #f04a50; border: 1px solid gray;")
-                button.setText("\u232B")
+                button.setIcon(qta.icon('fa5s.backspace'))
+                button.setIconSize(QtCore.QSize(30, 30))
+                button.setText("")
             else:
                 button.setStyleSheet("background-color: lightgray; border: 1px solid gray;")
 
@@ -176,8 +192,7 @@ class CalcFrame(QWidget):
     def clear(self, x=None):
         self.cpu.reset()
         self.lcd_display.setPlainText("0.00")
-        self.gui_rollertape.clear()  # Clear the roller tape
-        self.update_rollertape("0.00")
+        self.gui_rollertape.clear()  # Limpia la cinta de rodillo
         self.update_status_bar()
 
     def clear_entry(self, x=None):
@@ -186,7 +201,7 @@ class CalcFrame(QWidget):
         self.update_status_bar()
 
     def clear_tape(self, x=None):
-        self.gui_rollertape.clear()
+        self.gui_rollertape.clear()  # Limpia la cinta de rodillo
         self.update_status_bar()
 
     def add(self, x=None):
@@ -215,7 +230,7 @@ class CalcFrame(QWidget):
 
     def evaluate(self, x=None):
         self.cpu._operation.append(self.cpu.get_tempinput())  # Añadir el último operando antes de evaluar
-        self.update_rollertape(self.format_display(self.cpu.get_tempinput()) + " +")  # Mostrar la operación completa
+        self.update_rollertape(self.format_display(self.cpu.get_tempinput()) + " =")  # Mostrar la operación completa
         self.update_rollertape("--------------------")
         result = self.cpu.evaluate()
         self.update_rollertape(self.format_display(result))
