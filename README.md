@@ -33,6 +33,6 @@ pip install PyQt5 qtawesome
 To generate the executable:
 
 ```bash
-pyinstaller --onefile --add-data "font/MPLUS1Code-Regular.ttf:." rollcalc.py
+pyinstaller --onefile --add-data "MPLUS1Code-Regular.ttf:." rollcalc.py
 ```
 
