@@ -1,9 +1,23 @@
+#!/usr/bin/env python3
+"""
+Roll Tape Calculator
+
+By Pablo Niklas
+
+20240729 - Inicial.
+
+Packaged using => pyinstaller --onefile --add-data "font/MPLUS1Code-Regular.ttf:." rollcalc.py
+"""
+
+
+
 import sys
 
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QPushButton, QTextEdit, QHBoxLayout, QSizePolicy, QStatusBar, QMenuBar, QAction, QMessageBox
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QGridLayout, QPushButton, QTextEdit, QHBoxLayout, \
+    QSizePolicy, QStatusBar, QMenuBar, QAction, QMessageBox, QLabel
 from PyQt5.QtGui import QFont, QPalette, QColor, QTextCursor, QIcon, QFontDatabase
-from PyQt5.QtCore import Qt, QLocale
+from PyQt5.QtCore import Qt, QLocale, QPropertyAnimation
 
 import locale
 
@@ -21,22 +35,27 @@ class CalcFrame(QWidget):
         self._key_font = QFont("Roboto Condensed", 15)
 
         self.initUI()
+        #self.installEventFilter(self)
 
     def initUI(self):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
-        # Load the custom font
-        font_id = QFontDatabase.addApplicationFont("font/wopr-tweaked.ttf")
+        # Load the custom font - Taking into account pyinstaller.
+        try:
+            font_id = QFontDatabase.addApplicationFont(sys._MEIPASS+"/MPLUS1Code-Regular.ttf")
+        except AttributeError:
+            font_id = QFontDatabase.addApplicationFont("MPLUS1Code-Regular.ttf")
+
         if font_id == -1:
-            print("Error: Fuente wopr-tweaked.ttf no se pudo cargar.")
+            print("Error: Unable to load font. Using defaults.")
             self._rollertape_font = QFont("Roboto Console", self._rollertape_font_size)  # Fallback font
         else:
             font_family = QFontDatabase.applicationFontFamilies(font_id)
             if font_family:
                 self._rollertape_font = QFont(font_family[0], self._rollertape_font_size)
             else:
-                print("Error: No se encontraron familias de fuentes para wopr-tweaked.ttf.")
+                print("Error: Unable to load font. Using defaults.")
                 self._rollertape_font = QFont("Roboto Console", self._rollertape_font_size)  # Fallback font
 
         # Create menu bar
@@ -73,11 +92,27 @@ class CalcFrame(QWidget):
 
         # Reemplazar el panel LCD por un panel de texto de solo lectura
         self.lcd_display = QTextEdit()
-        self.lcd_display.setFont(QFont("Roboto Console", self._lcd_display_font_size))
-        self.lcd_display.setReadOnly(True)
+        try:
+            font_id = QFontDatabase.addApplicationFont(sys._MEIPASS+"/MPLUS1Code-Regular.ttf")
+        except AttributeError:
+            font_id = QFontDatabase.addApplicationFont("MPLUS1Code-Regular.ttf")
+
+        if font_id == -1:
+            print("Error: Unable to load font. Using defaults.")
+            self._lcd_display_font = QFont("Roboto Console", self._lcd_display_font_size)  # Fallback font
+        else:
+            font_family = QFontDatabase.applicationFontFamilies(font_id)
+            if font_family:
+                self._lcd_display_font = QFont(font_family[0], self._lcd_display_font_size)
+            else:
+                print("Error: Unable to load font. Using defaults.")
+                self._lcd_display_font = QFont("Roboto Console", self._lcd_display_font_size)  # Fallback font
+
+        self.lcd_display.setFont(self._lcd_display_font)
         self.lcd_display.setFixedHeight(40)
         self.lcd_display.setStyleSheet("background: rgb(255, 228, 181); color: black; border: 1px solid black;")
         self.lcd_display.setAlignment(Qt.AlignRight)  # Justificación a la derecha
+        self.lcd_display.setReadOnly(True)
         left_layout.addWidget(self.lcd_display)
 
         self.buttons = []
@@ -109,7 +144,9 @@ class CalcFrame(QWidget):
                 button.setStyleSheet("background-color: lightgray; border: 1px solid gray;")
 
             button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-            button.clicked.connect(lambda _, x=text: method(x))
+            button.clicked.connect(lambda _, x=text: self.on_button_click(x, method))
+            #button.clicked.connect(lambda _, x=text: method(x))
+
             grid.addWidget(button, *position)
             self.gui_buttons.append(button)
 
@@ -118,8 +155,9 @@ class CalcFrame(QWidget):
         equal_button.setFont(self._key_font)
         equal_button.setStyleSheet("background-color: #6db442; border: 1px solid gray; color: white;")
         equal_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        equal_button.clicked.connect(self.evaluate)
-        grid.addWidget(equal_button, 6, 0, 1, 5)
+        equal_button.clicked.connect(lambda: self.on_button_click('=', self.evaluate))
+        #equal_button.clicked.connect(self.evaluate)
+        grid.addWidget(equal_button)
         self.gui_buttons.append(equal_button)
 
         for i in range(grid.rowCount()):
@@ -139,6 +177,21 @@ class CalcFrame(QWidget):
         main_layout.addWidget(self.status_bar)
 
         self.update_status_bar()
+
+    def on_button_click(self, text, method):
+        self.animate_button(text)
+        method(text)
+
+    def animate_button(self, text):
+        button = self.button_map[text]
+        original_style = button.styleSheet()
+        animation = QPropertyAnimation(button, b"styleSheet")
+        animation.setDuration(300)
+        animation.setKeyValueAt(0, original_style)
+        animation.setKeyValueAt(0.5, "background-color: yellow; border: 1px solid gray;")
+        animation.setKeyValueAt(1, original_style)
+        animation.start()
+        self.animations = animation
 
     def createPalette(self):
         palette = QPalette()
@@ -231,7 +284,7 @@ class CalcFrame(QWidget):
     def evaluate(self, x=None):
         self.cpu._operation.append(self.cpu.get_tempinput())  # Añadir el último operando antes de evaluar
         self.update_rollertape(self.format_display(self.cpu.get_tempinput()) + " =")  # Mostrar la operación completa
-        self.update_rollertape("--------------------")
+        self.update_rollertape("~~~~~~~~~~~~~~~~~~~~~~~~")
         result = self.cpu.evaluate()
         self.update_rollertape(self.format_display(result))
         self.update_rollertape("")
