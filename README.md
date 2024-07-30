@@ -1,28 +1,38 @@
-# Calculadora con PyQt5
+# Calculator with PyQt5
 
-Este proyecto es una calculadora simple desarrollada en Python utilizando PyQt5. La aplicación incluye una pantalla LCD que muestra los números y resultados, un "roller tape" para registrar las operaciones y los resultados, y un teclado numérico con botones para operaciones básicas.
+This project is a simple calculator developed in Python using PyQt5. The application includes an LCD screen that displays numbers and results, a "roller tape" to record operations and results, and a numeric keypad with buttons for basic operations.
 
-## Características
+## Features
 
-- **Interfaz de Usuario**: 
-  - Pantalla LCD que muestra los números con un fondo ocre claro y texto negro.
-  - Roller tape que muestra las operaciones realizadas y los resultados.
-  - Teclado numérico con botones para dígitos, operaciones y funciones especiales.
+- **User Interface**:
+  - LCD screen that displays numbers with a light ochre background and black text.
+  - Roller tape that shows performed operations and results.
+  - Numeric keypad with buttons for digits, operations, and special functions.
 
-- **Funciones**:
-  - Entrada de números y operaciones.
-  - Realización de operaciones matemáticas básicas: suma, resta, multiplicación y división.
-  - Evaluación y visualización del resultado.
-  - Soporte para el punto decimal de acuerdo con la configuración regional del sistema operativo.
-  - Corrección de entradas con el botón Backspace.
-  - Reseteo con el botón "C".
+- **Functions**:
+  - Input of numbers and operations.
+  - Performing basic mathematical operations: addition, subtraction, multiplication, and division.
+  - Evaluation and display of the result.
+  - Support for the decimal point according to the operating system's regional settings.
+  - Correction of entries with the Backspace button.
+  - Reset with the "C" button.
 
-- **Soporte para Eventos de Teclado**:
-  - Los botones del teclado numérico y de operaciones responden a eventos de teclado correspondientes.
+- **Keyboard Event Support**:
+  - The buttons on the numeric keypad and for operations respond to corresponding keyboard events.
 
-## Instalación
+## Installation
 
-Para ejecutar este proyecto, asegúrate de tener Python 3 y PyQt5 instalados en tu entorno. Puedes instalar PyQt5 utilizando `pip`:
+To run this project, make sure you have Python 3, PyQt5, and qtawesome installed in your environment. You can install PyQt5 using `pip`:
 
 ```bash
-pip install PyQt5
+pip install PyQt5 qtawesome
+```
+
+## Generating a standalone executable
+
+To generate the executable:
+
+```bash
+pyinstaller --onefile --add-data "font/MPLUS1Code-Regular.ttf:." rollcalc.py
+```
+
