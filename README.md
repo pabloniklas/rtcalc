@@ -1,6 +1,6 @@
-# Calculator with PyQt5
+# RollTape Calculator
 
-This project is a simple calculator developed in Python using PyQt5. The application includes an LCD screen that displays numbers and results, a "roller tape" to record operations and results, and a numeric keypad with buttons for basic operations.
+This project is a simple calculator developed in Python using PyQt5. The application includes a displays for numbers and results, a "roller tape" to record operations and results, and a numeric keypad with buttons for basic operations.
 
 ## Features
 
