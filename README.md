@@ -35,4 +35,7 @@ To generate the executable:
 ```bash
 pyinstaller --onefile --add-data "MPLUS1Code-Regular.ttf:." rollcalc.py
 ```
+## Pending
+
+Managing mouse events over buttons. Currently it works ok with a numeric keypad.
 
