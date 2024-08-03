@@ -33,7 +33,7 @@ class CalcFrame(QWidget):
         self._lcd_display_font_size = 15
         self._rollertape_font_size = 13
         self._key_font = QFont("Roboto Condensed", 15)
-
+        self.button_map = {}  # Initialize button map
         self.initUI()
         #self.installEventFilter(self)
 
@@ -134,6 +134,7 @@ class CalcFrame(QWidget):
         for position, (text, method) in zip(positions, buttons):
             button = QPushButton(text)
             button.setFont(self._key_font)
+            self.button_map[text] = button
 
             if text == "Back":
                 button.setStyleSheet("background-color: #f04a50; border: 1px solid gray;")
@@ -145,7 +146,6 @@ class CalcFrame(QWidget):
 
             button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             button.clicked.connect(lambda _, x=text: self.on_button_click(x, method))
-            #button.clicked.connect(lambda _, x=text: method(x))
 
             grid.addWidget(button, *position)
             self.gui_buttons.append(button)
@@ -156,10 +156,7 @@ class CalcFrame(QWidget):
         equal_button.setStyleSheet("background-color: #6db442; border: 1px solid gray; color: white;")
         equal_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         equal_button.clicked.connect(lambda: self.on_button_click('=', self.evaluate))
-        #equal_button.clicked.connect(self.evaluate)
-        grid.addWidget(equal_button)
-        self.gui_buttons.append(equal_button)
-
+        self.button_map['='] = equal_button
         for i in range(grid.rowCount()):
             for j in range(grid.columnCount()):
                 grid.setRowStretch(i, 1)
@@ -446,6 +443,9 @@ class App(QApplication):
 
         # Establecer tamaño fijo para la ventana
         self.main_view.setFixedSize(800, 400)
+
+        # Establecer el icono
+        self.setWindowIcon(QIcon('rollcalc.png'))
 
         self.main_view.show()
 
